@@ -1,0 +1,9 @@
+[package]
+name = "ratatui-ascii-art"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crossterm = "0.29.0" # Should be removed before release; testing only...
+image = "*"
+ratatui = "*"
