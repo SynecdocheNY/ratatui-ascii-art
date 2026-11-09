@@ -6,9 +6,7 @@ fn main() -> std::io::Result<()> {
 }
 
 fn app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
-    let ascii_art = ratatui_ascii_art::AsciiImage::default()
-        .open("./media/herzha.webp")
-        .unwrap();
+    let ascii_art = ratatui_ascii_art::AsciiImage::default();
 
     loop {
         terminal.draw(|frame: &mut Frame| {

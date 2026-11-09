@@ -1,5 +1,6 @@
 [package]
 name = "ratatui-ascii-art"
+description = "Dynamically rendered, colorful ASCII art for the terminal."
 version = "0.1.0"
 edition = "2024"
 
