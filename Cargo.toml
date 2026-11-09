@@ -1,10 +1,11 @@
 [package]
 name = "ratatui-ascii-art"
 description = "Dynamically rendered, colorful ASCII art for the terminal."
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 crossterm = "0.29.0" # Should be removed before release; testing only...
-image = "*"
-ratatui = "*"
+image = "0.25.10"
+ratatui = "0.30.2"
