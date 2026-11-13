@@ -1,5 +1,7 @@
 # ASCII Art for [Ratatui](https://ratatui.rs/)
 
+![Ratatui Logo (Ascii)](assets/ratatui-ascii.png)
+
 Dynamically rendered, colorful ASCII art using the [`image`](https://crates.io/crates/image) crate.
 
 ## How it Works
@@ -14,9 +16,10 @@ The algorithm is reasonably efficient, but can be slow in some cases. If you run
 Feel free to send me an issue if the problem persists.
 
 ## Work in Progress
-- [x] Refactor builder methods into shared trait
+- [x] Refactor builder methods into shared trait.
 - [ ] Enforce animation FPS (Steal FPS Widget from [`ratatui-core`](https://github.com/ratatui/ratatui/blob/main/examples/apps/colors-rgb/src/main.rs)).
-- [ ] Add Ratatui styling support (`Stylize` trait).
+- [ ] Flesh out documentation.
+- [x] Add Ratatui styling support (`Stylize` trait).
 - [ ] Example renders in README.
 - [ ] Code examples (module and in README).
 - [ ] Minimize dependcies and their features.

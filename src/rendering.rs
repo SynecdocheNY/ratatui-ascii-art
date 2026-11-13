@@ -5,7 +5,7 @@ use crate::{AsciiAnimation, AsciiImage, FitDirection, FittingMode};
 
 impl Widget for &AsciiImage {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let (width, height) = calculate_size(self.fit, &self.image, &area);
+        let (width, height) = calculate_size(self.fitting_mode, &self.image, &area);
 
         let image = self
             .image
@@ -16,6 +16,7 @@ impl Widget for &AsciiImage {
             .pixels()
             .fold(0.0, |acc, pixel| get_luminance(pixel).max(acc));
 
+        // Accumulators
         let mut lines: Vec<Line> = Vec::with_capacity(height as usize);
         let mut spans: Vec<Span> = Vec::with_capacity(width as usize);
 
@@ -25,13 +26,20 @@ impl Widget for &AsciiImage {
                 spans.clear();
             }
 
-            let color = Color::Rgb(pixel[0], pixel[1], pixel[2]);
+            let new_char = get_char_for_pixel(pixel, max_luminance, self.inverted);
+            let new_span = Span::from(new_char);
 
-            // Normally this char_for_pixel has to be a char but because of the compatibility
-            // reasons with unicode-segmentation It's implemented as a &str (WORKAROUND)
-            let char_for_pixel = get_char_for_pixel(pixel, max_luminance, self.inverted);
-
-            spans.push(Span::from(char_for_pixel).fg(color));
+            spans.push(match self.style {
+                None => {
+                    let color = Color::Rgb(pixel[0], pixel[1], pixel[2]);
+                    new_span.fg(color)
+                }
+                Some(style) if style.fg.is_none() => {
+                    let color = Color::Rgb(pixel[0], pixel[1], pixel[2]);
+                    new_span.style(style).fg(color)
+                }
+                Some(style) => new_span.style(style),
+            });
         }
 
         lines.push(Line::from(spans.as_slice())); // Last line after loop finishes.
@@ -55,8 +63,9 @@ impl Widget for &mut AsciiAnimation {
 
         AsciiImage {
             image: frame_image,
-            fit: self.fit.clone(),
+            fitting_mode: self.fitting_mode.clone(),
             inverted: self.inverted,
+            style: self.style,
         }
         .render(area, buf);
     }
@@ -94,8 +103,8 @@ pub fn calculate_size(fit: FittingMode, image: &DynamicImage, area: &Rect) -> (u
     }
 }
 
-fn get_char_for_pixel(pixel: &Rgba<u8>, maximum: f64, inverted: bool) -> &str {
-    const CHARSET: &[&str] = &[
+fn get_char_for_pixel(pixel: &Rgba<u8>, maximum: f64, inverted: bool) -> &'static str {
+    const CHARSET: &'static [&'static str] = &[
         " ", ".", "`", "^", "\"", "\\", ",", ":", ";", "I", "l", "!", "i", ">", "<", "~", "+", "_",
         "-", "?", "]", "[", "}", "{", "1", ")", "(", "|", "\\", "/", "t", "f", "j", "r", "x", "n",
         "u", "v", "c", "z", "X", "Y", "U", "J", "C", "L", "Q", "0", "O", "Z", "m", "w", "q", "p",
