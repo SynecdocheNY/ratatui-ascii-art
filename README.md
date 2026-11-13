@@ -15,8 +15,9 @@ Feel free to send me an issue if the problem persists.
 
 ## Work in Progress
 - [x] Refactor builder methods into shared trait
-- [ ] Add Ratatui styling support.
 - [ ] Enforce animation FPS (Steal FPS Widget from https://github.com/ratatui/ratatui/blob/main/examples/apps/colors-rgb/src/main.rs).
+- [ ] Add Ratatui styling support (`Stylize` trait).
+- [ ] Minimize dependcies and their features.
 - [ ] Optimize loading large GIF files (for debug builds).
 
 ## Inspiration
