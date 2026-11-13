@@ -1,6 +1,6 @@
-# ASCII Art for Ratatui
+# ASCII Art for [Ratatui](https://ratatui.rs/)
 
-Dynamically rendered, colorful ASCII art using the `image` crate.
+Dynamically rendered, colorful ASCII art using the [`image`](https://crates.io/crates/image) crate.
 
 ## How it Works
 
@@ -15,11 +15,13 @@ Feel free to send me an issue if the problem persists.
 
 ## Work in Progress
 - [x] Refactor builder methods into shared trait
-- [ ] Enforce animation FPS (Steal FPS Widget from https://github.com/ratatui/ratatui/blob/main/examples/apps/colors-rgb/src/main.rs).
+- [ ] Enforce animation FPS (Steal FPS Widget from [`ratatui-core`](https://github.com/ratatui/ratatui/blob/main/examples/apps/colors-rgb/src/main.rs)).
 - [ ] Add Ratatui styling support (`Stylize` trait).
+- [ ] Example renders in README.
+- [ ] Code examples (module and in README).
 - [ ] Minimize dependcies and their features.
 - [ ] Optimize loading large GIF files (for debug builds).
 
 ## Inspiration
 
-Much of the core luminance & color logic was adapted from the `rascii_art` crate.
+Much of the core luminance & color logic was adapted from the [`rascii_art`](https://crates.io/crates/rascii_art) crate.
