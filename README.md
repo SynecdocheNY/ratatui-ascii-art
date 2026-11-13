@@ -14,9 +14,11 @@ The algorithm is reasonably efficient, but can be slow in some cases. If you run
 Feel free to send me an issue if the problem persists.
 
 ## Work in Progress
-- Implement `AsciiArtFitting::Fit` algorithm.
-- Add colorless option. Maybe a different widget altogether?
+- [x] Refactor builder methods into shared trait
+- [ ] Add Ratatui styling support.
+- [ ] Enforce animation FPS (Steal FPS Widget from https://github.com/ratatui/ratatui/blob/main/examples/apps/colors-rgb/src/main.rs).
+- [ ] Optimize loading large GIF files (for debug builds).
 
 ## Inspiration
 
-Much of the core brightness & color logic was adapted from the `rascii_art` crate.
+Much of the core luminance & color logic was adapted from the `rascii_art` crate.

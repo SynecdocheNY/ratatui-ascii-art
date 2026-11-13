@@ -1,30 +1,58 @@
-use image::{DynamicImage, ImageError, Rgba};
-use ratatui::{prelude::*, widgets::Paragraph};
+use image::{AnimationDecoder, DynamicImage, ImageError, ImageResult};
+use std::{fs::read, io::Cursor, path::Path};
+
+use rendering::calculate_size;
+
+mod rendering;
 
 const RATATUI_LOGO_BYTES: &'static [u8] = include_bytes!("ratatui-logo.png");
+const RATATUI_GIF_BYTES: &'static [u8] = include_bytes!("rat.gif");
 
+/// Builder and constructor methods common to the `AsciiImage` and `AsciiAnimation` widgets.
+pub trait AsciiBuilder: Default + Sized {
+    fn new<P: AsRef<Path>>(image_path: P) -> ImageResult<Self>;
+    fn open<P: AsRef<Path>>(self, image_path: P) -> ImageResult<Self>;
+    fn fit(self, mode: FittingMode) -> Self;
+    /// The size at which an ASCII widget will be rendered after the resizing algorithm runs. This method can be used for centering.
+    fn fitted_size(&self, area: &ratatui::layout::Rect) -> (u16, u16);
+    fn inverted(self) -> Self;
+    fn not_inverted(self) -> Self;
+}
+
+/// A static image rendered as ASCII art.
 pub struct AsciiImage {
     pub image: DynamicImage,
-    pub fit: AsciiImageFitting,
+    pub fit: FittingMode,
     pub inverted: bool,
 }
 
-impl AsciiImage {
-    pub fn open<P: AsRef<std::path::Path>>(mut self, image_path: P) -> Result<Self, ImageError> {
+impl AsciiBuilder for AsciiImage {
+    fn new<P: AsRef<Path>>(image_path: P) -> ImageResult<Self> {
+        Ok(AsciiImage::default().open(image_path)?)
+    }
+
+    fn open<P: AsRef<Path>>(mut self, image_path: P) -> ImageResult<Self> {
         self.image = image::open(image_path)?;
 
         Ok(self)
     }
 
-    pub fn fitting(mut self, fitting: AsciiImageFitting) -> Self {
-        self.fit = fitting;
+    fn fitted_size(&self, area: &ratatui::layout::Rect) -> (u16, u16) {
+        calculate_size(self.fit, &self.image, area)
+    }
 
+    fn fit(mut self, mode: FittingMode) -> Self {
+        self.fit = mode;
         self
     }
 
-    pub fn inverted(mut self) -> Self {
+    fn inverted(mut self) -> Self {
         self.inverted = true;
+        self
+    }
 
+    fn not_inverted(mut self) -> Self {
+        self.inverted = false;
         self
     }
 }
@@ -34,96 +62,98 @@ impl Default for AsciiImage {
         AsciiImage {
             image: image::load_from_memory(RATATUI_LOGO_BYTES)
                 .expect("Failed to load default image from binary."),
-            fit: AsciiImageFitting::default(),
+            fit: FittingMode::default(),
+            inverted: false,
+        }
+    }
+}
+
+/// An animated GIF rendered as ASCII art.
+pub struct AsciiAnimation {
+    pub frames: Vec<image::Frame>,
+    pub index: usize,
+    pub fit: FittingMode,
+    pub inverted: bool,
+}
+
+impl AsciiBuilder for AsciiAnimation {
+    fn new<P: AsRef<Path>>(image_path: P) -> ImageResult<Self> {
+        Ok(AsciiAnimation::default().open(image_path)?)
+    }
+
+    fn open<P: AsRef<Path>>(mut self, image_path: P) -> ImageResult<Self> {
+        let file = read(image_path).map_err(|io_error| ImageError::IoError(io_error))?;
+        let gif_decoder = image::codecs::gif::GifDecoder::new(Cursor::new(file))?;
+
+        self.frames = gif_decoder.into_frames().collect_frames()?;
+        self.index = 0;
+
+        Ok(self)
+    }
+
+    fn fitted_size(&self, area: &ratatui::layout::Rect) -> (u16, u16) {
+        let frame_image =
+            DynamicImage::ImageRgba8(self.frames.get(self.index).unwrap().buffer().clone());
+
+        calculate_size(self.fit, &frame_image, area)
+    }
+
+    fn fit(mut self, mode: FittingMode) -> Self {
+        self.fit = mode;
+        self
+    }
+
+    fn inverted(mut self) -> Self {
+        self.inverted = true;
+        self
+    }
+
+    fn not_inverted(mut self) -> Self {
+        self.inverted = false;
+        self
+    }
+}
+
+impl Default for AsciiAnimation {
+    fn default() -> Self {
+        let gif_decoder = image::codecs::gif::GifDecoder::new(Cursor::new(RATATUI_GIF_BYTES))
+            .expect("Failed to load default GIF from binary.");
+
+        AsciiAnimation {
+            frames: gif_decoder
+                .into_frames()
+                .collect_frames()
+                .expect("Failed to decode default GIF from binary."),
+            index: 0,
+            fit: FittingMode::default(),
             inverted: false,
         }
     }
 }
 
 /// How an image should fill its bounding area.
-#[derive(Default)]
-pub enum AsciiImageFitting {
-    /// The image will be rendered at the provided dimensions. Too small a container will clip the image; too large will create empty space around it.
+#[derive(Default, Copy, Clone)]
+pub enum FittingMode {
+    None,
+    /// The image will be rendered at the provided dimensions.
     ///
-    /// Note that the values are in "number of terminal characters," *not* pixels.
+    /// Too small a container will clip the image; too large will create empty space around it.
+    /// Note that the units are "number of terminal characters," *not* pixels.
     Exact(u16, u16),
-    /// The image resizes itself, but keeps its aspect ratio. A misfit container will create empty space.
-    Fit,
-    /// The image resizes itself, warping to fill the available area. A misfit container will create stretching effects.
+    /// The image resizes itself, but keeps its aspect ratio.
+    ///
+    /// A misfit container will create empty space or .
+    Fit(FitDirection),
+    /// The image warps to fill the available area.
+    ///
+    /// A misfit container will create distortion.
     #[default]
     Stretch,
 }
 
-impl Widget for &AsciiImage {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let (width, height): (u16, u16) = match self.fit {
-            AsciiImageFitting::Exact(width, height) => (width, height),
-            AsciiImageFitting::Fit => {
-                todo!()
-            }
-            AsciiImageFitting::Stretch => (area.width, area.height),
-        };
-
-        let image = self
-            .image
-            .thumbnail_exact(width as u32, height as u32)
-            .to_rgba8();
-
-        let max_luminance = image
-            .pixels()
-            .fold(0.0, |acc, pixel| get_luminance(pixel).max(acc));
-
-        let mut lines: Vec<Line> = Vec::with_capacity(height as usize);
-        let mut spans: Vec<Span> = Vec::with_capacity(width as usize);
-
-        for (_, line, pixel) in image.enumerate_pixels() {
-            if line as usize > lines.len() {
-                lines.push(Line::from(spans.as_slice()));
-                spans.clear();
-            }
-
-            let color = Color::Rgb(pixel[0], pixel[1], pixel[2]);
-
-            // Normally this char_for_pixel has to be a char but because of the compatibility
-            // reasons with unicode-segmentation It's implemented as a &str (WORKAROUND)
-            let char_for_pixel = get_char_for_pixel(pixel, max_luminance, self.inverted);
-
-            spans.push(Span::from(char_for_pixel).fg(color));
-        }
-
-        lines.push(Line::from(spans.as_slice())); // Last line after loop finishes.
-
-        Paragraph::new(lines).render(area, buf);
-    }
-}
-
-fn get_char_for_pixel(pixel: &Rgba<u8>, maximum: f64, inverted: bool) -> &str {
-    const CHARSET: &[&str] = &[
-        " ", ".", "`", "^", "\"", "\\", ",", ":", ";", "I", "l", "!", "i", ">", "<", "~", "+", "_",
-        "-", "?", "]", "[", "}", "{", "1", ")", "(", "|", "\\", "/", "t", "f", "j", "r", "x", "n",
-        "u", "v", "c", "z", "X", "Y", "U", "J", "C", "L", "Q", "0", "O", "Z", "m", "w", "q", "p",
-        "d", "b", "k", "h", "a", "o", "*", "#", "M", "W", "&", "8", "%", "B", "$", "@",
-    ];
-
-    let luminance = get_luminance(pixel) / maximum;
-
-    // TODO: Use alpha channel to determine if pixel is transparent?
-    let char_index = (luminance * (CHARSET.len() as f64 - 1.0)) as usize;
-
-    CHARSET[match inverted {
-        false => char_index,
-        true => CHARSET.len() - 1 - char_index,
-    }]
-}
-
-fn get_luminance(pixel: &Rgba<u8>) -> f64 {
-    const RGB_MAX: f64 = u8::MAX as f64;
-    /// Data from [Rec. 709 color spec](https://en.wikipedia.org/wiki/Rec._709).
-    const COLOR_CHANNEL_WEIGHTS: [f64; 4] = [0.2126, 0.7152, 0.0722, 0.0];
-
-    let mut luminance = pixel[0] as f64 * COLOR_CHANNEL_WEIGHTS[0];
-    luminance += pixel[1] as f64 * COLOR_CHANNEL_WEIGHTS[1];
-    luminance += pixel[2] as f64 * COLOR_CHANNEL_WEIGHTS[2];
-
-    luminance / RGB_MAX
+#[derive(Copy, Clone)]
+pub enum FitDirection {
+    Width,
+    Height,
+    Both,
 }
