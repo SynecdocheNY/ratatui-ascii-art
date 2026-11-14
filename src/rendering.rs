@@ -16,6 +16,12 @@ impl Widget for &AsciiImage {
             .pixels()
             .fold(0.0, |acc, pixel| get_luminance(pixel).max(acc));
 
+        let min_luminance = image
+            .pixels()
+            .fold(1.0, |acc, pixel| get_luminance(pixel).min(acc));
+
+        //dbg!((&min_luminance, &max_luminance));
+
         // Accumulators
         let mut lines: Vec<Line> = Vec::with_capacity(height as usize);
         let mut spans: Vec<Span> = Vec::with_capacity(width as usize);
@@ -26,7 +32,7 @@ impl Widget for &AsciiImage {
                 spans.clear();
             }
 
-            let new_char = get_char_for_pixel(pixel, max_luminance, self.inverted);
+            let new_char = get_char_for_pixel(pixel, (min_luminance, max_luminance), self.inverted);
             let new_span = Span::from(new_char);
 
             spans.push(match self.style {
@@ -103,7 +109,11 @@ pub fn calculate_size(fit: FittingMode, image: &DynamicImage, area: &Rect) -> (u
     }
 }
 
-fn get_char_for_pixel(pixel: &Rgba<u8>, maximum: f64, inverted: bool) -> &'static str {
+fn get_char_for_pixel(
+    pixel: &Rgba<u8>,
+    luminance_range: (f64, f64),
+    inverted: bool,
+) -> &'static str {
     const CHARSET: &'static [&'static str] = &[
         " ", ".", "`", "^", "\"", "\\", ",", ":", ";", "I", "l", "!", "i", ">", "<", "~", "+", "_",
         "-", "?", "]", "[", "}", "{", "1", ")", "(", "|", "\\", "/", "t", "f", "j", "r", "x", "n",
@@ -111,7 +121,8 @@ fn get_char_for_pixel(pixel: &Rgba<u8>, maximum: f64, inverted: bool) -> &'stati
         "d", "b", "k", "h", "a", "o", "*", "#", "M", "W", "&", "8", "%", "B", "$", "@",
     ];
 
-    let luminance = get_luminance(pixel) / maximum;
+    let luminance =
+        (get_luminance(pixel) - luminance_range.0) / (luminance_range.1 - luminance_range.0);
 
     // TODO: Use alpha channel to determine if pixel is transparent?
     let char_index = (luminance * (CHARSET.len() as f64 - 1.0)) as usize;
